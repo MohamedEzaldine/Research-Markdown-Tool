@@ -1,4 +1,4 @@
-# 📚 المحول البحثي الاحترافي (Pro Academic PDF to MD)
+# 📚 المحول البحثي  Research-Markdown-Tool
 
 ![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)
 ![PyQt5](https://img.shields.io/badge/GUI-PyQt5-green.svg)
