@@ -37,5 +37,5 @@
 لضمان الشفافية وإمكانية التحقق من البروتوكولات البرمجية (Reproducibility)، يمكنك تشغيل الأداة من المصدر:
 1. قم باستنساخ المستودع:
    ```bash
-   git clone [https://github.com/YourUsername/YourRepoName.git](https://github.com/YourUsername/YourRepoName.git)
-   cd YourRepoName
+git clone https://github.com/MohamedEzaldine/Research-Markdown-Tool.git
+cd Research-Markdown-Tool
