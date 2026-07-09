@@ -6,9 +6,6 @@ from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout, QPushButton,
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QObject
 from PyQt5.QtGui import QFont, QTextCursor
 
-# ---------------------------------------------------------
-# التقاط مخرجات النظام (Terminal) لعرضها في الواجهة
-# ---------------------------------------------------------
 class StreamInterceptor(QObject):
     text_written = pyqtSignal(str)
     def write(self, text):
@@ -16,9 +13,6 @@ class StreamInterceptor(QObject):
     def flush(self):
         pass
 
-# ---------------------------------------------------------
-# كلاس المعالجة المحلية
-# ---------------------------------------------------------
 class LocalConverterThread(QThread):
     finished = pyqtSignal(str)
     error = pyqtSignal(str)
@@ -50,9 +44,6 @@ class LocalConverterThread(QThread):
         except Exception as e:
             self.error.emit(str(e))
 
-# ---------------------------------------------------------
-# الواجهة العصرية
-# ---------------------------------------------------------
 class ProConverterApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -63,7 +54,6 @@ class ProConverterApp(QWidget):
         self.setWindowTitle('المحول البحثي الاحترافي (Pro Edition)')
         self.setGeometry(200, 200, 550, 450)
         
-        # تصميم (CSS) للواجهة لتبدو عصرية جداً
         self.setStyleSheet("""
             QWidget { background-color: #f8f9fa; font-family: 'Segoe UI', Tahoma; }
             QLabel { color: #2c3e50; font-size: 14px; font-weight: bold; }
@@ -98,13 +88,11 @@ class ProConverterApp(QWidget):
         self.file_label.setStyleSheet("color: #e67e22; font-size: 12px;")
         layout.addWidget(self.file_label)
 
-        # شاشة الأوامر (Console)
         self.console_output = QTextEdit(self)
         self.console_output.setReadOnly(True)
         self.console_output.setPlaceholderText("سجل العمليات سيظهر هنا...")
         layout.addWidget(self.console_output)
 
-        # شريط التقدم
         self.progress_bar = QProgressBar(self)
         self.progress_bar.setValue(0)
         self.progress_bar.hide()
@@ -120,7 +108,6 @@ class ProConverterApp(QWidget):
         self.pdf_path = ""
 
     def setup_logging(self):
-        # تحويل مخرجات النظام إلى الواجهة
         self.interceptor = StreamInterceptor()
         self.interceptor.text_written.connect(self.append_log)
         sys.stdout = self.interceptor
@@ -131,10 +118,8 @@ class ProConverterApp(QWidget):
             self.console_output.moveCursor(QTextCursor.End)
             self.console_output.insertPlainText(text)
             self.console_output.moveCursor(QTextCursor.End)
-            # محاولة محاكاة شريط التقدم بناءً على المخرجات
             if "%" in text:
                 try:
-                    # البحث عن أي رقم متبوع بعلامة %
                     match = re.search(r'(\d+)%', text)
                     if match:
                         self.progress_bar.setValue(int(match.group(1)))
@@ -160,7 +145,7 @@ class ProConverterApp(QWidget):
             self.btn_select.setEnabled(False)
             self.btn_convert.setEnabled(False)
             self.progress_bar.show()
-            self.progress_bar.setRange(0, 0) # حركة مستمرة في البداية
+            self.progress_bar.setRange(0, 0) 
             self.console_output.clear()
             
             self.converter_thread = LocalConverterThread(self.pdf_path, save_path)
@@ -180,9 +165,6 @@ class ProConverterApp(QWidget):
             self.file_label.setText("تم الانتهاء بنجاح.")
             self.btn_convert.setEnabled(False)
 
-# ---------------------------------------------------------
-# دالة التحميل المخفية (تستخدم أثناء التثبيت فقط)
-# ---------------------------------------------------------
 def download_models_only():
     print("جاري تحميل نماذج الذكاء الاصطناعي الأساسية، يرجى الانتظار...")
     from marker.models import create_model_dict
@@ -191,7 +173,6 @@ def download_models_only():
     sys.exit(0)
 
 if __name__ == '__main__':
-    # إذا تم تمرير هذا الأمر من برنامج التثبيت (Installer)
     if len(sys.argv) > 1 and sys.argv[1] == '--download-models':
         download_models_only()
     else:
