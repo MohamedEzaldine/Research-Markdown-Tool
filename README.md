@@ -17,7 +17,9 @@
 ---
 
 ## 📸 لقطات الشاشة
-*(ضع هنا صورة لواجهة البرنامج أثناء العمل)*
+<img width="543" height="482" alt="0" src="https://github.com/user-attachments/assets/4e35b77b-c72b-433e-aee7-3da1777a503d" />
+<img width="538" height="485" alt="1" src="https://github.com/user-attachments/assets/90169963-c96f-410f-8762-4409971a45a5" />
+
 ---
 
 ## 🚀 كيفية التثبيت والاستخدام
