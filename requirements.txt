@@ -1,0 +1,12 @@
+# واجهة الـ API
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+slowapi>=0.1.9
+
+# محرّك التحويل الدقيق (نفس محرّك ultimate_converter.py)
+marker-pdf>=1.2.0
+
+# ملاحظة: marker-pdf يسحب torch وحزم ثقيلة تلقائياً.
+# لتشغيل أسرع على كرت شاشة NVIDIA، ثبّت torch المناسب لإصدار CUDA لديك
+# من https://pytorch.org قبل تثبيت هذا الملف.
