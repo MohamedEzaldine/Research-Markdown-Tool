@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>المحوّل البحثي — من PDF إلى Markdown</title>
+<meta name="description" content="أداة مجانية لتحويل الأوراق العلمية من PDF إلى Markdown نظيف، مع دعم معادلات LaTeX والجداول المعقدة والتخطيط ذي العمودين." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&family=IBM+Plex+Serif:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<style>
+  :root{
+    --paper:      #F5F2EA;   /* خلفية ورقية دافئة */
+    --paper-2:    #FBF9F4;   /* سطح أفتح للبطاقات */
+    --ink:        #17212E;   /* حبر داكن للنص والأقسام الداكنة */
+    --ink-soft:   #5A6572;   /* نص ثانوي */
+    --teal:       #0E7C6B;   /* اللون المميّز: التحويل/النظافة */
+    --teal-deep:  #0A5C50;
+    --gold:       #B4842B;   /* لمسة ذهبية: المعادلات/التمييز */
+    --line:       #E4DECF;   /* خط شعري على الورق */
+    --line-dark:  #2B3644;   /* خط على الداكن */
+    --danger:     #B4442B;
+
+    --r: 14px;
+    --maxw: 1120px;
+    --shadow: 0 1px 2px rgba(23,33,46,.05), 0 12px 32px -18px rgba(23,33,46,.35);
+    --shadow-lg: 0 2px 4px rgba(23,33,46,.06), 0 30px 60px -30px rgba(23,33,46,.45);
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html{ scroll-behavior:smooth; }
+  body{
+    font-family:"IBM Plex Sans Arabic", system-ui, sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  html[dir="ltr"] body{ line-height:1.6; }
+  a{ color:inherit; text-decoration:none; }
+  .wrap{ width:100%; max-width:var(--maxw); margin-inline:auto; padding-inline:24px; }
+  section{ position:relative; }
+
+  /* ---------- تمييز نص علوي ---------- */
+  .eyebrow{
+    font-family:"IBM Plex Mono", monospace;
+    font-size:.72rem; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--teal); font-weight:500;
+    display:inline-flex; align-items:center; gap:.55em;
+  }
+  .eyebrow::before{ content:""; width:26px; height:1px; background:var(--teal); display:inline-block; }
+
+  /* ---------- الهيدر ---------- */
+  header{
+    position:sticky; top:0; z-index:50;
+    background:color-mix(in srgb, var(--paper) 82%, transparent);
+    backdrop-filter:saturate(1.4) blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{ display:flex; align-items:center; justify-content:space-between; height:66px; }
+  .brand{ display:flex; align-items:center; gap:11px; font-weight:700; font-size:1.05rem; }
+  .glyph{
+    width:34px; height:34px; border-radius:9px;
+    background:linear-gradient(150deg, var(--teal), var(--teal-deep));
+    color:#fff; display:grid; place-items:center; flex:none;
+    font-family:"IBM Plex Mono"; font-weight:500; font-size:.95rem;
+    box-shadow:0 6px 16px -6px rgba(14,124,107,.6);
+  }
+  .nav-links{ display:flex; align-items:center; gap:28px; }
+  .nav-links a.navlink{ color:var(--ink-soft); font-size:.92rem; font-weight:500; transition:color .2s; }
+  .nav-links a.navlink:hover{ color:var(--ink); }
+  .nav-right{ display:flex; align-items:center; gap:14px; }
+  .lang-btn{
+    font-family:"IBM Plex Mono"; font-size:.78rem; font-weight:500;
+    border:1px solid var(--line); background:var(--paper-2);
+    padding:7px 12px; border-radius:8px; cursor:pointer; color:var(--ink);
+    transition:border-color .2s, background .2s;
+  }
+  .lang-btn:hover{ border-color:var(--teal); }
+  .nav-cta{ padding:9px 18px !important; font-size:.88rem !important; border-radius:9px !important; }
+  @media(max-width:520px){ .nav-cta{ display:none; } }
+  @media(max-width:860px){ .nav-links .navlink{ display:none; } }
+
+  /* ---------- الهيرو ---------- */
+  .hero{ padding:70px 0 40px; }
+  .hero-grid{ display:grid; grid-template-columns:1fr 1.02fr; gap:56px; align-items:center; }
+  .hero h1{
+    font-size:clamp(2rem, 4.4vw, 3.35rem); font-weight:700; line-height:1.18;
+    letter-spacing:-.01em; margin:20px 0 18px;
+  }
+  .hero h1 .accent{ color:var(--teal); position:relative; }
+  .hero p.lead{ font-size:1.12rem; color:var(--ink-soft); max-width:44ch; }
+  .cta-row{ display:flex; gap:14px; margin-top:30px; flex-wrap:wrap; }
+  .btn{
+    display:inline-flex; align-items:center; gap:9px;
+    font-family:inherit; font-size:.98rem; font-weight:600; cursor:pointer;
+    padding:13px 24px; border-radius:11px; border:1px solid transparent;
+    transition:transform .18s, box-shadow .18s, background .2s, border-color .2s;
+  }
+  .btn-primary{ background:var(--teal); color:#fff; box-shadow:0 10px 24px -10px rgba(14,124,107,.7); }
+  .btn-primary:hover{ background:var(--teal-deep); transform:translateY(-2px); box-shadow:0 16px 30px -12px rgba(14,124,107,.75); }
+  .btn-ghost{ background:transparent; color:var(--ink); border-color:var(--line); }
+  .btn-ghost:hover{ border-color:var(--ink); transform:translateY(-2px); }
+
+  /* شارات الثقة */
+  .trust{ display:flex; gap:22px; margin-top:34px; flex-wrap:wrap; }
+  .trust span{ font-family:"IBM Plex Mono"; font-size:.76rem; color:var(--ink-soft); display:flex; align-items:center; gap:7px; }
+  .trust span::before{ content:""; width:6px; height:6px; border-radius:50%; background:var(--gold); }
+
+  /* ---------- لوحة التحويل (العنصر المميّز) ---------- */
+  .transform{
+    background:var(--ink); border-radius:20px; overflow:hidden;
+    box-shadow:var(--shadow-lg); position:relative;
+    border:1px solid var(--line-dark);
+  }
+  .tf-bar{
+    display:flex; align-items:center; gap:8px; padding:12px 16px;
+    border-bottom:1px solid var(--line-dark); background:#131b26;
+  }
+  .tf-bar i{ width:11px; height:11px; border-radius:50%; background:#333f4d; display:inline-block; }
+  .tf-bar i:nth-child(1){ background:#c9564a; } .tf-bar i:nth-child(2){ background:#c9922e; } .tf-bar i:nth-child(3){ background:#0e7c6b; }
+  .tf-bar .tf-file{ margin-inline-start:auto; font-family:"IBM Plex Mono"; font-size:.72rem; color:#6b7683; }
+  .tf-body{ display:grid; grid-template-columns:1fr 1fr; }
+  .tf-pane{ padding:22px; }
+  .tf-pane.pdf{ background:#fbfaf7; direction:ltr; text-align:left; border-inline-end:1px solid var(--line-dark); }
+  .tf-pane.md{ background:#111823; direction:ltr; text-align:left; }
+  .tf-tag{
+    font-family:"IBM Plex Mono"; font-size:.66rem; letter-spacing:.1em; text-transform:uppercase;
+    margin-bottom:14px; display:inline-block;
+  }
+  .pdf .tf-tag{ color:#9aa2ac; }
+  .md .tf-tag{ color:#4fb3a3; }
+  /* محاكاة ورقة علمية */
+  .paper-title{ font-family:"IBM Plex Serif"; font-weight:600; font-size:.9rem; color:#1a2430; margin-bottom:10px; text-align:center; }
+  .paper-cols{ column-count:2; column-gap:14px; }
+  .pl{ height:5px; background:#dfe3e8; border-radius:3px; margin-bottom:6px; }
+  .pl.s{ width:60%; } .pl.m{ width:82%; }
+  .paper-eq{ background:#eef1f4; border:1px solid #dfe3e8; border-radius:6px; padding:8px; text-align:center; margin:9px 0; break-inside:avoid; }
+  .paper-eq .eq{ font-family:"IBM Plex Serif"; font-style:italic; font-size:.82rem; color:#1a2430; }
+  .paper-eq .eq sub, .paper-eq .eq sup{ font-size:.6rem; }
+  /* ناتج ماركداون */
+  .md-code{ font-family:"IBM Plex Mono"; font-size:.72rem; line-height:1.85; color:#c7d0da; white-space:pre-wrap; }
+  .md-code .h{ color:#4fb3a3; } .md-code .eq{ color:#d6a94a; } .md-code .tb{ color:#8b94a0; } .md-code .b{ color:#e6ebf0; }
+  @media(max-width:960px){
+    .hero-grid{ grid-template-columns:1fr; gap:36px; }
+    .hero{ padding:40px 0 20px; }
+    .hero p.lead{ max-width:none; }
+  }
+  @media(max-width:520px){ .tf-body{ grid-template-columns:1fr; } .tf-pane.pdf{ border-inline-end:none; border-bottom:1px solid var(--line-dark); } }
+
+  /* ---------- أداة التحويل الحقيقية ---------- */
+  .tool{ padding:26px 0 20px; }
+  .tool-card{
+    background:var(--paper-2); border:1px solid var(--line); border-radius:20px;
+    box-shadow:var(--shadow); padding:30px; margin-top:-6px; position:relative;
+  }
+  .drop{
+    border:2px dashed var(--line); border-radius:14px; background:var(--paper);
+    padding:38px 24px; text-align:center; cursor:pointer;
+    transition:border-color .2s, background .2s;
+  }
+  .drop:hover, .drop.drag{ border-color:var(--teal); background:color-mix(in srgb, var(--teal) 5%, var(--paper)); }
+  .drop .di{ width:52px; height:52px; margin:0 auto 14px; color:var(--teal); }
+  .drop h3{ font-size:1.05rem; font-weight:600; margin-bottom:6px; }
+  .drop p{ color:var(--ink-soft); font-size:.9rem; }
+  .drop .hint{ font-family:"IBM Plex Mono"; font-size:.72rem; color:var(--ink-soft); margin-top:10px; }
+
+  .filebar{ display:none; align-items:center; gap:14px; padding:16px 18px; background:var(--paper); border:1px solid var(--line); border-radius:12px; margin-top:16px; }
+  .filebar.show{ display:flex; }
+  .filebar .fi{ width:34px; height:40px; flex:none; color:var(--teal); }
+  .filebar .meta{ min-width:0; flex:1; }
+  .filebar .meta b{ display:block; font-size:.92rem; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .filebar .meta small{ color:var(--ink-soft); font-family:"IBM Plex Mono"; font-size:.72rem; }
+  .filebar .x{ margin-inline-start:auto; cursor:pointer; color:var(--ink-soft); border:none; background:none; font-size:1.3rem; line-height:1; padding:4px 8px; border-radius:6px; }
+  .filebar .x:hover{ background:var(--line); color:var(--danger); }
+
+  .actions{ display:flex; gap:12px; margin-top:18px; align-items:center; flex-wrap:wrap; }
+  .actions .btn[disabled]{ opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+  .prog{ flex:1; min-width:160px; height:8px; background:var(--line); border-radius:99px; overflow:hidden; display:none; }
+  .prog.show{ display:block; }
+  .prog i{ display:block; height:100%; width:0; background:linear-gradient(90deg,var(--teal),var(--gold)); border-radius:99px; transition:width .25s; }
+  .status{ font-family:"IBM Plex Mono"; font-size:.78rem; color:var(--ink-soft); }
+  .status.err{ color:var(--danger); }
+
+  /* ناتج التحويل */
+  .result{ display:none; margin-top:22px; }
+  .result.show{ display:block; }
+  .result-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:10px; }
+  .result-head .rt{ font-family:"IBM Plex Mono"; font-size:.8rem; color:var(--teal); font-weight:500; }
+  .result-actions{ display:flex; gap:8px; }
+  .mini{
+    font-family:"IBM Plex Sans Arabic"; font-size:.82rem; font-weight:600; cursor:pointer;
+    border:1px solid var(--line); background:var(--paper); color:var(--ink);
+    padding:8px 14px; border-radius:9px; transition:border-color .2s, background .2s;
+  }
+  .mini:hover{ border-color:var(--teal); }
+  .mini.copied{ border-color:var(--teal); color:var(--teal); }
+  .output{
+    font-family:"IBM Plex Mono"; font-size:.8rem; line-height:1.8; color:var(--ink);
+    background:var(--ink); color:#c7d0da; border-radius:12px; padding:20px;
+    white-space:pre-wrap; word-break:break-word; direction:ltr; text-align:left;
+    max-height:440px; overflow:auto; border:1px solid var(--line-dark);
+  }
+  .lite-note{ margin-top:14px; font-size:.82rem; color:var(--ink-soft); background:color-mix(in srgb,var(--gold) 9%,var(--paper)); border:1px solid color-mix(in srgb,var(--gold) 30%,var(--line)); border-radius:10px; padding:11px 14px; }
+  .lite-note b{ color:var(--gold); }
+
+  /* اختيار نوع التحويل */
+  .modes{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px; }
+  .mode{
+    display:flex; align-items:center; gap:12px; text-align:start; cursor:pointer;
+    background:var(--paper); border:1.5px solid var(--line); border-radius:13px;
+    padding:14px 16px; font-family:inherit; color:var(--ink);
+    transition:border-color .2s, background .2s, box-shadow .2s;
+  }
+  .mode:hover{ border-color:color-mix(in srgb,var(--teal) 40%,var(--line)); }
+  .mode.active{ border-color:var(--teal); background:color-mix(in srgb,var(--teal) 6%,var(--paper)); box-shadow:0 6px 18px -12px rgba(14,124,107,.6); }
+  .mode-ic{
+    width:40px; height:40px; flex:none; border-radius:10px; display:grid; place-items:center;
+    font-size:1.15rem; background:var(--paper-2); border:1px solid var(--line);
+  }
+  .mode.active .mode-ic{ background:var(--teal); color:#fff; border-color:transparent; }
+  .mode-txt{ display:flex; flex-direction:column; line-height:1.35; }
+  .mode-txt b{ font-size:1rem; font-weight:600; }
+  .mode-txt small{ font-size:.76rem; color:var(--ink-soft); font-family:"IBM Plex Mono"; }
+  .mode.active .mode-txt small{ color:var(--teal); }
+  @media(max-width:520px){ .modes{ grid-template-columns:1fr; } }
+
+  /* شاشة المعالجة (الوضع الدقيق) — تحل محل محتوى البطاقة أثناء التنفيذ */
+  .tool-card.proc-active > .modes,
+  .tool-card.proc-active > .drop,
+  .tool-card.proc-active > .filebar,
+  .tool-card.proc-active > .actions,
+  .tool-card.proc-active > .result{ display:none !important; }
+
+  .proc{
+    display:none; flex-direction:column; align-items:center; gap:20px;
+    padding:6px 0;
+  }
+  .proc.show{ display:flex; }
+
+  /* بانر الإعلان (Billboard — متوافق مع جوجل أدسنس) */
+  .ad-slot{
+    width:100%; max-width:970px; min-height:250px; display:flex; align-items:center; justify-content:center;
+    border:1.5px dashed var(--line); border-radius:12px; background:var(--paper);
+    color:var(--ink-soft); font-family:"IBM Plex Mono"; font-size:.78rem; letter-spacing:.05em; text-align:center;
+  }
+  .ad-slot.hidden{ display:none; }
+  @media(max-width:520px){ .ad-slot{ min-height:250px; } } /* 300×250 على الموبايل */
+
+  .ring-wrap{ position:relative; width:132px; height:132px; }
+  .ring{ width:132px; height:132px; transform:rotate(-90deg); }
+  .ring-bg{ fill:none; stroke:var(--line); stroke-width:9; }
+  .ring-fg{ fill:none; stroke:var(--teal); stroke-width:9; stroke-linecap:round;
+    stroke-dasharray:326.726; stroke-dashoffset:326.726; transition:stroke-dashoffset .35s ease; }
+  .ring-pct{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:1.9rem; color:var(--ink); }
+  .ring-pct i{ font-size:.9rem; font-style:normal; color:var(--ink-soft); margin-inline-start:2px; align-self:flex-start; margin-top:9px; }
+  .proc-status{ font-family:"IBM Plex Mono"; font-size:.88rem; color:var(--teal); text-align:center; min-height:1.4em; margin-top:-6px; }
+
+  /* شاشة اللوج (خطوات التنفيذ) */
+  .proc-log{
+    width:100%; max-width:560px; height:150px; overflow-y:auto;
+    background:var(--ink); border:1px solid var(--line-dark); border-radius:12px;
+    padding:14px 16px; direction:ltr; text-align:left;
+    font-family:"IBM Plex Mono"; font-size:.74rem; line-height:1.85; color:#aeb8c4;
+  }
+  .proc-log .ln{ white-space:pre-wrap; word-break:break-word; }
+  .proc-log .ln .chev{ color:var(--teal); }
+  .proc-log .ln .ok{ color:#4fb3a3; }
+  .proc-log .ln .warn{ color:var(--gold); }
+  .proc-log .ln.cur{ color:#e6ebf0; }
+  .proc-log::-webkit-scrollbar{ width:8px; }
+  .proc-log::-webkit-scrollbar-thumb{ background:var(--line-dark); border-radius:99px; }
+
+  .proc-cancel{ background:none; border:none; cursor:pointer; color:var(--ink-soft); font-family:inherit; font-size:.86rem; text-decoration:underline; text-underline-offset:3px; }
+  .proc-cancel:hover{ color:var(--danger); }
+  @media(prefers-reduced-motion:reduce){ .ring-fg{ transition:none; } }
+
+  .acc-note{ margin-top:14px; font-size:.82rem; color:var(--ink-soft); background:color-mix(in srgb,var(--teal) 8%,var(--paper)); border:1px solid color-mix(in srgb,var(--teal) 26%,var(--line)); border-radius:10px; padding:11px 14px; display:none; }
+  .acc-note.show{ display:block; }
+  .acc-note b{ color:var(--teal); }
+
+  /* ---------- المميزات ---------- */
+  .features{ padding:80px 0 20px; }
+  .sec-head{ max-width:56ch; margin-bottom:40px; }
+  .sec-head h2{ font-size:clamp(1.6rem,3vw,2.3rem); font-weight:700; letter-spacing:-.01em; margin:14px 0 12px; }
+  .sec-head p{ color:var(--ink-soft); font-size:1.05rem; }
+  .feat-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:18px; }
+  .feat{
+    background:var(--paper-2); border:1px solid var(--line); border-radius:var(--r);
+    padding:26px; transition:transform .2s, box-shadow .2s, border-color .2s;
+  }
+  .feat:hover{ transform:translateY(-3px); box-shadow:var(--shadow); border-color:color-mix(in srgb,var(--teal) 35%,var(--line)); }
+  .feat .fic{ width:44px; height:44px; border-radius:11px; display:grid; place-items:center; margin-bottom:16px; background:color-mix(in srgb,var(--teal) 12%,var(--paper-2)); color:var(--teal); }
+  .feat .fic svg{ width:22px; height:22px; }
+  .feat h3{ font-size:1.12rem; font-weight:600; margin-bottom:8px; }
+  .feat p{ color:var(--ink-soft); font-size:.94rem; }
+  .feat .fic.gold{ background:color-mix(in srgb,var(--gold) 14%,var(--paper-2)); color:var(--gold); }
+  @media(max-width:720px){ .feat-grid{ grid-template-columns:1fr; } }
+
+  /* ---------- الخطوات ---------- */
+  .steps{ padding:80px 0 30px; }
+  .step-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:0; border:1px solid var(--line); border-radius:var(--r); overflow:hidden; background:var(--paper-2); }
+  .step{ padding:32px 28px; border-inline-end:1px solid var(--line); position:relative; }
+  .step:last-child{ border-inline-end:none; }
+  .step .num{ font-family:"IBM Plex Mono"; font-size:.9rem; color:var(--teal); font-weight:500; margin-bottom:14px; }
+  .step h3{ font-size:1.1rem; font-weight:600; margin-bottom:8px; }
+  .step p{ color:var(--ink-soft); font-size:.92rem; }
+  @media(max-width:720px){ .step-grid{ grid-template-columns:1fr; } .step{ border-inline-end:none; border-bottom:1px solid var(--line); } .step:last-child{ border-bottom:none; } }
+
+  /* ---------- الفوتر ---------- */
+  footer{ border-top:1px solid var(--line); padding:44px 0 40px; margin-top:20px; }
+  .foot{ display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; }
+  .foot .brand{ margin-bottom:10px; }
+  .foot p{ color:var(--ink-soft); font-size:.88rem; max-width:40ch; }
+  .foot-links{ display:flex; gap:26px; flex-wrap:wrap; }
+  .foot-links a{ color:var(--ink-soft); font-size:.9rem; transition:color .2s; }
+  .foot-links a:hover{ color:var(--teal); }
+  .copyright{ margin-top:26px; padding-top:20px; border-top:1px solid var(--line); font-family:"IBM Plex Mono"; font-size:.74rem; color:var(--ink-soft); }
+  .credit{ margin-top:8px; font-family:"IBM Plex Mono"; font-size:.72rem; letter-spacing:.06em; color:var(--ink-soft); opacity:.85; }
+  .credit a{ color:var(--teal); }
+
+  @media(prefers-reduced-motion:reduce){ *{ transition:none !important; scroll-behavior:auto !important; } }
+  :focus-visible{ outline:2px solid var(--teal); outline-offset:2px; border-radius:4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="#top">
+      <span class="glyph">M↓</span>
+      <span data-i18n="brand">المحوّل البحثي</span>
+    </a>
+    <nav class="nav-links">
+      <a class="navlink" href="#tool" data-i18n="nav_tool">التحويل</a>
+      <a class="navlink" href="#features" data-i18n="nav_features">المميزات</a>
+      <a class="navlink" href="#steps" data-i18n="nav_how">كيف يعمل</a>
+      <div class="nav-right">
+        <button class="lang-btn" id="langBtn">EN</button>
+        <a class="btn btn-primary nav-cta" href="#tool" data-i18n="nav_cta">جرّب الآن</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<a id="top"></a>
+
+<!-- الهيرو -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow" data-i18n="hero_eyebrow">تحويل الأوراق العلمية</span>
+      <h1 data-i18n="hero_h1">حوّل أبحاثك من <span class="accent">PDF</span> إلى Markdown نظيف</h1>
+      <p class="lead" data-i18n="hero_lead">أداة مخصّصة للأوراق العلمية: تحافظ على معادلات LaTeX، تعيد بناء الجداول المعقدة، وتقرأ التخطيط ذا العمودين بالترتيب الصحيح. مجاناً، ومباشرة في متصفحك.</p>
+      <div class="cta-row">
+        <a class="btn btn-primary" href="#tool" data-i18n="hero_cta1">ابدأ التحويل الآن</a>
+        <a class="btn btn-ghost" href="#steps" data-i18n="hero_cta2">إزاي بيشتغل؟</a>
+      </div>
+      <div class="trust">
+        <span data-i18n="trust1">لا حاجة لحساب</span>
+        <span data-i18n="trust2">مفتوح المصدر</span>
+        <span data-i18n="trust3">مجاني بالكامل</span>
+      </div>
+    </div>
+
+    <!-- العنصر المميّز: لوحة التحويل -->
+    <div class="transform" aria-hidden="true">
+      <div class="tf-bar"><i></i><i></i><i></i><span class="tf-file">paper_2024.pdf → output.md</span></div>
+      <div class="tf-body">
+        <div class="tf-pane pdf">
+          <span class="tf-tag">PDF</span>
+          <div class="paper-title">Attention Mechanisms in Deep Networks</div>
+          <div class="paper-cols">
+            <div class="pl m"></div><div class="pl"></div><div class="pl s"></div>
+            <div class="paper-eq"><span class="eq">α<sub>i</sub> = softmax(q·k<sub>i</sub> / √d)</span></div>
+            <div class="pl"></div><div class="pl m"></div>
+            <div class="pl s"></div><div class="pl"></div><div class="pl m"></div>
+            <div class="pl"></div><div class="pl s"></div>
+          </div>
+        </div>
+        <div class="tf-pane md">
+          <span class="tf-tag">Markdown</span>
+<div class="md-code"><span class="h"># Attention Mechanisms
+## in Deep Networks</span>
+
+<span class="b">The attention weight is</span>
+<span class="b">defined as:</span>
+
+<span class="eq">$$\alpha_i = \text{softmax}\!
+\left(\frac{q \cdot k_i}{\sqrt{d}}\right)$$</span>
+
+<span class="tb">| Model | BLEU |
+|-------|------|
+| Base  | 27.3 |
+| Ours  | 31.8 |</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- أداة التحويل الحقيقية -->
+<section class="tool" id="tool">
+  <div class="wrap">
+    <div class="tool-card">
+      <input type="file" id="fileInput" accept="application/pdf,.pdf" hidden />
+
+      <div class="modes" role="tablist" aria-label="نوع التحويل">
+        <button class="mode active" id="modeFast" data-mode="fast" role="tab" aria-selected="true">
+          <span class="mode-ic">⚡</span>
+          <span class="mode-txt"><b data-i18n="mode_fast">سريع</b><small data-i18n="mode_fast_sub">ثوانٍ · نص وعناوين</small></span>
+        </button>
+        <button class="mode" id="modeAccurate" data-mode="accurate" role="tab" aria-selected="false" disabled style="opacity: 0.6; cursor: not-allowed; background: var(--paper);">
+          <span class="mode-ic">🔒</span>
+          <span class="mode-txt"><b data-i18n="mode_accurate">دقيق (قريباً)</b><small data-i18n="mode_accurate_sub">نسخة احترافية · معادلات وجداول</small></span>
+        </button>
+      </div>
+
+      <div class="drop" id="drop" tabindex="0" role="button" aria-label="اختيار ملف PDF">
+        <svg class="di" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 16V4m0 0L7 9m5-5l5 5" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 15v3a2 2 0 002 2h14a2 2 0 002-2v-3" stroke-linecap="round"/></svg>
+        <h3 data-i18n="drop_h">اسحب ملف PDF هنا، أو اضغط للاختيار</h3>
+        <p data-i18n="drop_p">أوراق بحثية، مقالات علمية، أو أي مستند PDF</p>
+        <p class="hint">PDF · ≤ 30MB</p>
+      </div>
+
+      <div class="filebar" id="filebar">
+        <svg class="fi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg>
+        <div class="meta"><b id="fname">—</b><small id="fsize">—</small></div>
+        <button class="x" id="removeFile" aria-label="إزالة الملف">×</button>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="convertBtn" disabled data-i18n="convert_btn">حوّل إلى Markdown</button>
+        <div class="prog" id="prog"><i></i></div>
+        <span class="status" id="status"></span>
+      </div>
+
+      <div class="result" id="result">
+        <div class="result-head">
+          <span class="rt" data-i18n="result_title"># الناتج (Markdown)</span>
+          <div class="result-actions">
+            <button class="mini" id="copyBtn" data-i18n="copy_btn">نسخ</button>
+            <button class="mini" id="downloadBtn" data-i18n="download_btn">تنزيل .md</button>
+          </div>
+        </div>
+        <div class="output" id="output"></div>
+        <div class="lite-note" id="liteNote" style="display:none">
+          <b data-i18n="lite_b">ملاحظة:</b>
+          <span data-i18n="lite_note">الوضع السريع يستخرج النص والعناوين والفقرات تلقائياً. للمعادلات والجداول المعقدة، راجِع الناتج قبل الاستخدام.</span>
+        </div>
+        <div class="acc-note" id="accNote">
+          <b data-i18n="acc_note_b">تنبيه:</b>
+          <span data-i18n="acc_note">المحرّك الدقيق (معادلات وجداول) لسه مش متوصّل بالموقع. النتيجة دي من الوضع السريع مؤقتاً — اربط الـ API لتفعيل الدقة الكاملة.</span>
+        </div>
+      </div>
+
+      <!-- شاشة المعالجة للوضع الدقيق -->
+      <div class="proc" id="proc" aria-hidden="true">
+        <!-- مساحة الإعلان: استبدل محتوى ad-slot بكود جوجل أدسنس عند التفعيل (728×90 / responsive) -->
+        <div class="ad-slot" id="adSlot"><span data-i18n="ad_placeholder">مساحة إعلانية · 970×250 (Google AdSense)</span></div>
+        <div class="ring-wrap">
+          <svg class="ring" viewBox="0 0 120 120">
+            <circle class="ring-bg" cx="60" cy="60" r="52"/>
+            <circle class="ring-fg" id="ringFg" cx="60" cy="60" r="52"/>
+          </svg>
+          <div class="ring-pct"><span id="ringPct">0</span><i>%</i></div>
+        </div>
+        <div class="proc-status" id="procStatus" data-i18n="acc_stage1">بيقرأ صفحات الورقة…</div>
+        <div class="proc-log" id="procLog" role="log" aria-live="polite"></div>
+        <button class="proc-cancel" id="procCancel" data-i18n="acc_cancel">إلغاء</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- المميزات -->
+<section class="features" id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow" data-i18n="feat_eyebrow">مبنية للبحث العلمي</span>
+      <h2 data-i18n="feat_h">أدوات التحويل العامة تفشل مع الأوراق العلمية. هذه لا تفشل.</h2>
+      <p data-i18n="feat_p">المعادلات، الجداول، والتخطيط الأكاديمي المعقّد — كلها تُعامل كمواطنين من الدرجة الأولى.</p>
+    </div>
+    <div class="feat-grid">
+      <div class="feat">
+        <div class="fic gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 6h16M7 6l3 12M14 12h6M17 9l-3 9" stroke-linecap="round"/></svg></div>
+        <h3 data-i18n="f1_h">معادلات LaTeX</h3>
+        <p data-i18n="f1_p">يتعرّف على المعادلات الرياضية المعقّدة ويحوّلها إلى كود LaTeX سليم جاهز للنشر أو إعادة الاستخدام.</p>
+      </div>
+      <div class="feat">
+        <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M3 15h18M9 4v16M15 4v16"/></svg></div>
+        <h3 data-i18n="f2_h">الجداول المعقدة</h3>
+        <p data-i18n="f2_p">يحلّل الجداول العلمية المتداخلة ويعيد بناءها بتنسيق Markdown مرتّب يحافظ على الصفوف والأعمدة.</p>
+      </div>
+      <div class="feat">
+        <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="7" height="16" rx="1"/><rect x="14" y="4" width="7" height="16" rx="1"/></svg></div>
+        <h3 data-i18n="f3_h">تخطيط العمودين</h3>
+        <p data-i18n="f3_p">يقرأ الأوراق ذات العمودين بالترتيب الصحيح، ويتجاهل الترويسات والهوامش وأرقام الصفحات.</p>
+      </div>
+      <div class="feat">
+        <div class="fic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <h3 data-i18n="f4_h">بسيطة وسريعة</h3>
+        <p data-i18n="f4_p">بدون تسجيل ولا برامج تثبّتها. ارفع ملفك واحصل على الناتج في ثوانٍ — وملفك لا يُحفظ ولا يُشارَك.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- الخطوات -->
+<section class="steps" id="steps">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow" data-i18n="steps_eyebrow">ثلاث خطوات</span>
+      <h2 data-i18n="steps_h">من ورقة PDF إلى Markdown في ثوانٍ</h2>
+    </div>
+    <div class="step-grid">
+      <div class="step">
+        <div class="num">01</div>
+        <h3 data-i18n="s1_h">ارفع الورقة</h3>
+        <p data-i18n="s1_p">اسحب ملف الـ PDF الخاص بك أو اخترْه من جهازك. لا تسجيل ولا انتظار.</p>
+      </div>
+      <div class="step">
+        <div class="num">02</div>
+        <h3 data-i18n="s2_h">يعالج المحوّل</h3>
+        <p data-i18n="s2_p">يقرأ المحوّل صفحات الورقة، ويستخرج العناوين والفقرات والبنية النصية.</p>
+      </div>
+      <div class="step">
+        <div class="num">03</div>
+        <h3 data-i18n="s3_h">نزّل Markdown</h3>
+        <p data-i18n="s3_p">انسخ الناتج مباشرة أو نزّله كملف <code>.md</code> جاهز للاستخدام.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- الفوتر -->
+<footer>
+  <div class="wrap">
+    <div class="foot">
+      <div>
+        <a class="brand" href="#top"><span class="glyph">M↓</span><span data-i18n="brand">المحوّل البحثي</span></a>
+        <p data-i18n="foot_p">أداة مفتوحة المصدر لتحويل الأوراق العلمية من PDF إلى Markdown، للباحثين والأكاديميين والطلاب.</p>
+      </div>
+      <div class="foot-links">
+        <a href="#tool" data-i18n="nav_tool">التحويل</a>
+        <a href="#features" data-i18n="nav_features">المميزات</a>
+        <a href="#steps" data-i18n="nav_how">كيف يعمل</a>
+      </div>
+    </div>
+    <div class="copyright">© <span id="year"></span> المحوّل البحثي · <span data-i18n="license">صُنع بعناية للباحثين والطلاب</span></div>
+    <!-- لربط الاسم بموقعك: استبدل السطر بـ <a href="https://..." target="_blank" rel="noopener">Mohamed Ezaldine</a> -->
+    <div class="credit">developed by Mohamed Ezaldine</div>
+  </div>
+</footer>
+
+<script>
+/* ============ الإعدادات ============
+   apiEndpoint: رابط محرّك الـ Python للوضع الدقيق. يُرسَل الملف عبر POST
+   (FormData: field اسمه "file") ويُتوقّع رد { "markdown": "..." } أو نص Markdown مباشر.
+   showAdSlot: إظهار مساحة الإعلان فوق شاشة المعالجة (استبدل محتواها بكود الإعلان لاحقاً).
+   accurateEstimateMs: تقدير مبدئي لمدة الوضع الدقيق (لحركة النسبة قبل رجوع السيرفر). */
+const CONFIG = {
+  apiEndpoint: "http://localhost:8000/convert",
+  showAdSlot: true,
+  accurateEstimateMs: 12000
+};
+
+/* ============ الترجمة (عربي / إنجليزي) ============ */
+const I18N = {
+  ar: {
+    dir:"rtl", langBtn:"EN",
+    brand:"المحوّل البحثي",
+    nav_tool:"التحويل", nav_features:"المميزات", nav_how:"كيف يعمل", nav_cta:"جرّب الآن",
+    hero_eyebrow:"تحويل الأوراق العلمية",
+    hero_h1:'حوّل أبحاثك من <span class="accent">PDF</span> إلى Markdown نظيف',
+    hero_lead:"أداة مخصّصة للأوراق العلمية: تحافظ على معادلات LaTeX، تعيد بناء الجداول المعقدة، وتقرأ التخطيط ذا العمودين بالترتيب الصحيح. مجاناً، ومباشرة في متصفحك.",
+    hero_cta1:"ابدأ التحويل الآن", hero_cta2:"إزاي بيشتغل؟",
+    trust1:"لا حاجة لحساب", trust2:"بدون تثبيت", trust3:"مجاني بالكامل",
+    drop_h:"اسحب ملف PDF هنا، أو اضغط للاختيار", drop_p:"أوراق بحثية، مقالات علمية، أو أي مستند PDF",
+    convert_btn:"حوّل إلى Markdown", result_title:"# الناتج (Markdown)",
+    copy_btn:"نسخ", download_btn:"تنزيل .md",
+    mode_fast:"سريع", mode_fast_sub:"ثوانٍ · نص وعناوين",
+    mode_accurate:"دقيق", mode_accurate_sub:"أبطأ · معادلات وجداول",
+    ad_placeholder:"مساحة إعلانية · 970×250 (Google AdSense)", acc_cancel:"إلغاء",
+    acc_stage1:"بيقرأ صفحات الورقة…", acc_stage2:"بيتعرّف على المعادلات…",
+    acc_stage3:"بيعيد بناء الجداول…", acc_stage4:"بيرتّب البنية النهائية…",
+    log_init:"تهيئة المحوّل الدقيق",
+    log_model_layout:"تحميل نموذج تحليل التخطيط",
+    log_model_eq:"تحميل نموذج المعادلات (LaTeX-OCR)",
+    log_model_table:"تحميل نموذج استخراج الجداول",
+    log_page:"صفحة {n}/{t} — تحليل المناطق",
+    log_found:"صفحة {n}/{t} — {e} معادلة، {b} جدول",
+    log_assemble:"تجميع ملف Markdown النهائي",
+    log_done:"تم في {s} ثانية",
+    acc_note_b:"تنبيه:",
+    acc_note:"المحرّك الدقيق (marker) بيشتغل على السيرفر مش في المتصفح، ولسه مش مربوط بالموقع. عشان كده النتيجة دي مؤقتاً من الوضع السريع، والتحويل سريع لأنه مش بيشغّل الدقة الكاملة. بعد ربط الـ backend، الوضع الدقيق هيشتغل فعلياً وياخد وقته الطبيعي.",
+    lite_b:"ملاحظة:",
+    lite_note:"الوضع السريع يستخرج النص والعناوين والفقرات تلقائياً. للمعادلات والجداول المعقدة، راجِع الناتج قبل الاستخدام.",
+    feat_eyebrow:"مبنية للبحث العلمي",
+    feat_h:"أدوات التحويل العامة تفشل مع الأوراق العلمية. هذه لا تفشل.",
+    feat_p:"المعادلات، الجداول، والتخطيط الأكاديمي المعقّد — كلها تُعامل كمواطنين من الدرجة الأولى.",
+    f1_h:"معادلات LaTeX", f1_p:"يتعرّف على المعادلات الرياضية المعقّدة ويحوّلها إلى كود LaTeX سليم جاهز للنشر أو إعادة الاستخدام.",
+    f2_h:"الجداول المعقدة", f2_p:"يحلّل الجداول العلمية المتداخلة ويعيد بناءها بتنسيق Markdown مرتّب يحافظ على الصفوف والأعمدة.",
+    f3_h:"تخطيط العمودين", f3_p:"يقرأ الأوراق ذات العمودين بالترتيب الصحيح، ويتجاهل الترويسات والهوامش وأرقام الصفحات.",
+    f4_h:"بسيطة وسريعة", f4_p:"بدون تسجيل ولا برامج تثبّتها. ارفع ملفك واحصل على الناتج في ثوانٍ — وملفك لا يُحفظ ولا يُشارَك.",
+    steps_eyebrow:"ثلاث خطوات", steps_h:"من ورقة PDF إلى Markdown في ثوانٍ",
+    s1_h:"ارفع الورقة", s1_p:"اسحب ملف الـ PDF الخاص بك أو اخترْه من جهازك. لا تسجيل ولا انتظار.",
+    s2_h:"يعالج المحوّل", s2_p:"يقرأ المحوّل صفحات الورقة، ويستخرج العناوين والفقرات والبنية النصية.",
+    s3_h:"نزّل Markdown", s3_p:"انسخ الناتج مباشرة أو نزّله كملف .md جاهز للاستخدام.",
+    foot_p:"أداة لتحويل الأوراق العلمية من PDF إلى Markdown، للباحثين والأكاديميين والطلاب.",
+    license:"صُنع بعناية للباحثين والطلاب",
+    st_reading:"يقرأ الصفحات…", st_page:"صفحة", st_of:"من", st_building:"يبني Markdown…",
+    st_done:"تم التحويل بنجاح", st_sending:"يرسل إلى المحرك…",
+    err_pdf:"الرجاء اختيار ملف PDF صالح.", err_size:"حجم الملف يتجاوز 30 ميجابايت.",
+    err_generic:"تعذّر تحويل هذا الملف. جرّب ملفاً آخر.",
+    copied:"تم النسخ"
+  },
+  en: {
+    dir:"ltr", langBtn:"ع",
+    brand:"Research Markdown",
+    nav_tool:"Convert", nav_features:"Features", nav_how:"How it works", nav_cta:"Try now",
+    hero_eyebrow:"Scientific paper conversion",
+    hero_h1:'Turn your research from <span class="accent">PDF</span> into clean Markdown',
+    hero_lead:"Built for scientific papers: it preserves LaTeX equations, rebuilds complex tables, and reads two-column layouts in the right order. Free, right in your browser.",
+    hero_cta1:"Start converting", hero_cta2:"How it works",
+    trust1:"No account needed", trust2:"No install", trust3:"Completely free",
+    drop_h:"Drop a PDF here, or click to choose", drop_p:"Research papers, scientific articles, or any PDF document",
+    convert_btn:"Convert to Markdown", result_title:"# Output (Markdown)",
+    copy_btn:"Copy", download_btn:"Download .md",
+    mode_fast:"Fast", mode_fast_sub:"Seconds · text & headings",
+    mode_accurate:"Accurate", mode_accurate_sub:"Slower · equations & tables",
+    ad_placeholder:"Ad space · 970×250 (Google AdSense)", acc_cancel:"Cancel",
+    acc_stage1:"Reading pages…", acc_stage2:"Detecting equations…",
+    acc_stage3:"Rebuilding tables…", acc_stage4:"Finalizing structure…",
+    log_init:"initializing precise converter",
+    log_model_layout:"loading layout analysis model",
+    log_model_eq:"loading equation model (LaTeX-OCR)",
+    log_model_table:"loading table extraction model",
+    log_page:"page {n}/{t} — detecting regions",
+    log_found:"page {n}/{t} — {e} equations, {b} tables",
+    log_assemble:"assembling final markdown",
+    log_done:"done in {s}s",
+    acc_note_b:"Heads up:",
+    acc_note:"The accurate engine (marker) runs on a server, not in the browser, and isn't connected yet. So this result is temporarily from Fast mode — and it's quick precisely because full accuracy isn't running. Once you connect the backend, Accurate mode runs for real and takes its normal time.",
+    lite_b:"Note:",
+    lite_note:"Quick mode extracts text, headings, and paragraphs automatically. For equations and complex tables, review the output before use.",
+    feat_eyebrow:"Built for research",
+    feat_h:"Generic converters fail on scientific papers. This one doesn't.",
+    feat_p:"Equations, tables, and complex academic layout — all treated as first-class citizens.",
+    f1_h:"LaTeX equations", f1_p:"Recognizes complex mathematical equations and converts them into clean, publish-ready LaTeX code.",
+    f2_h:"Complex tables", f2_p:"Parses nested scientific tables and rebuilds them as tidy Markdown that keeps rows and columns intact.",
+    f3_h:"Two-column layout", f3_p:"Reads two-column papers in the correct order, ignoring headers, margins, and page numbers.",
+    f4_h:"Simple and fast", f4_p:"No sign-up, nothing to install. Upload your file and get the result in seconds — your file is never stored or shared.",
+    steps_eyebrow:"Three steps", steps_h:"From PDF paper to Markdown in seconds",
+    s1_h:"Upload the paper", s1_p:"Drag your PDF or pick it from your device. No sign-up, no waiting.",
+    s2_h:"It gets processed", s2_p:"The converter reads the pages and extracts headings, paragraphs, and text structure.",
+    s3_h:"Download Markdown", s3_p:"Copy the output directly or download it as a ready-to-use .md file.",
+    foot_p:"A tool that converts scientific papers from PDF to Markdown, for researchers, academics, and students.",
+    license:"Crafted for researchers and students",
+    st_reading:"Reading pages…", st_page:"Page", st_of:"of", st_building:"Building Markdown…",
+    st_done:"Converted successfully", st_sending:"Sending to engine…",
+    err_pdf:"Please choose a valid PDF file.", err_size:"File exceeds 30 MB.",
+    err_generic:"Could not convert this file. Try another file.",
+    copied:"Copied"
+  }
+};
+
+let lang = "ar";
+const $ = (s)=>document.querySelector(s);
+
+function applyLang(l){
+  lang = l;
+  const t = I18N[l];
+  document.documentElement.lang = l;
+  document.documentElement.dir = t.dir;
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    const k = el.getAttribute("data-i18n");
+    if(t[k] != null) el.innerHTML = t[k];
+  });
+  $("#langBtn").textContent = t.langBtn;
+}
+$("#langBtn").addEventListener("click", ()=> applyLang(lang === "ar" ? "en" : "ar"));
+$("#year").textContent = new Date().getFullYear();
+applyLang("ar");
+
+/* ============ إدارة الملف ============ */
+if(window.pdfjsLib){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+}
+let currentFile = null;
+const drop = $("#drop"), fileInput = $("#fileInput"), filebar = $("#filebar"),
+      convertBtn = $("#convertBtn"), statusEl = $("#status"), prog = $("#prog"),
+      progBar = prog.querySelector("i"), result = $("#result"), output = $("#output"),
+      liteNote = $("#liteNote"), accNote = $("#accNote"),
+      proc = $("#proc"), ringFg = $("#ringFg"), ringPct = $("#ringPct"),
+      procStatus = $("#procStatus"), procCancel = $("#procCancel"), adSlot = $("#adSlot"),
+      procLog = $("#procLog"), toolCard = document.querySelector(".tool-card"),
+      modeFast = $("#modeFast"), modeAccurate = $("#modeAccurate");
+
+let mode = "fast";
+let cancelRequested = false;
+const RING_C = 326.726;
+
+if(!CONFIG.showAdSlot) adSlot.classList.add("hidden");
+
+function setMode(m){
+  mode = m;
+  const acc = m === "accurate";
+  modeAccurate.classList.toggle("active", acc);
+  modeFast.classList.toggle("active", !acc);
+  modeAccurate.setAttribute("aria-selected", acc);
+  modeFast.setAttribute("aria-selected", !acc);
+}
+modeFast.addEventListener("click", ()=> setMode("fast"));
+modeAccurate.addEventListener("click", ()=> setMode("accurate"));
+
+function fmtSize(b){ return b < 1048576 ? (b/1024).toFixed(0)+" KB" : (b/1048576).toFixed(1)+" MB"; }
+function t(k){ return I18N[lang][k]; }
+function setStatus(msg, err){ statusEl.textContent = msg || ""; statusEl.classList.toggle("err", !!err); }
+
+function pickFile(file){
+  setStatus("");
+  if(!file) return;
+  if(file.type !== "application/pdf" && !/\.pdf$/i.test(file.name)){ setStatus(t("err_pdf"), true); return; }
+  if(file.size > 30*1048576){ setStatus(t("err_size"), true); return; }
+  currentFile = file;
+  $("#fname").textContent = file.name;
+  $("#fsize").textContent = fmtSize(file.size);
+  filebar.classList.add("show");
+  convertBtn.disabled = false;
+  result.classList.remove("show");
+}
+function clearFile(){
+  currentFile = null; fileInput.value = "";
+  filebar.classList.remove("show"); convertBtn.disabled = true;
+  result.classList.remove("show"); setStatus("");
+  liteNote.style.display = "none"; accNote.classList.remove("show");
+}
+
+drop.addEventListener("click", ()=> fileInput.click());
+drop.addEventListener("keydown", (e)=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); fileInput.click(); } });
+fileInput.addEventListener("change", (e)=> pickFile(e.target.files[0]));
+$("#removeFile").addEventListener("click", clearFile);
+["dragenter","dragover"].forEach(ev=> drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.classList.add("drag"); }));
+["dragleave","drop"].forEach(ev=> drop.addEventListener(ev, (e)=>{ e.preventDefault(); drop.classList.remove("drag"); }));
+drop.addEventListener("drop", (e)=>{ if(e.dataTransfer.files[0]) pickFile(e.dataTransfer.files[0]); });
+
+/* ============ التحويل ============ */
+convertBtn.addEventListener("click", ()=>{
+  if(!currentFile) return;
+  if(mode === "accurate") runAccurate();
+  else runFast();
+});
+
+/* ---- الوضع السريع: استخراج داخل المتصفح مع شريط بسيط ---- */
+async function runFast(){
+  convertBtn.disabled = true; result.classList.remove("show");
+  accNote.classList.remove("show"); liteNote.style.display = "none";
+  prog.classList.add("show"); progBar.style.width = "0%";
+  try{
+    const md = await convertInBrowser(currentFile, (frac, page, total)=>{
+      progBar.style.width = Math.round(frac*90) + "%";
+      setStatus(`${t("st_reading")} ${t("st_page")} ${page} ${t("st_of")} ${total}`);
+    });
+    setStatus(t("st_building")); progBar.style.width = "96%";
+    output.textContent = md;
+    result.classList.add("show");
+    liteNote.style.display = "block";
+    progBar.style.width = "100%"; setStatus(t("st_done"));
+  }catch(err){
+    console.error(err); setStatus(t("err_generic"), true);
+  }finally{
+    convertBtn.disabled = false;
+    setTimeout(()=>{ prog.classList.remove("show"); progBar.style.width="0%"; }, 700);
+  }
+}
+
+/* ---- الوضع الدقيق: دائرة نسبة + شاشة لوج للخطوات ---- */
+function setRing(pct){
+  pct = Math.max(0, Math.min(100, pct));
+  ringFg.style.strokeDashoffset = RING_C * (1 - pct/100);
+  ringPct.textContent = Math.round(pct);
+}
+function clearLog(){ procLog.innerHTML = ""; }
+function logLine(text, kind){
+  // إزالة تمييز السطر السابق كـ"جارٍ"
+  const prev = procLog.querySelector(".ln.cur");
+  if(prev){ prev.classList.remove("cur"); const m = prev.querySelector(".mark"); if(m) m.innerHTML = ' <span class="ok">✓</span>'; }
+  const div = document.createElement("div");
+  div.className = "ln cur";
+  const mark = (kind === "final") ? "" : ' <span class="mark"></span>';
+  div.innerHTML = '<span class="chev">›</span> ' + text + mark;
+  procLog.appendChild(div);
+  procLog.scrollTop = procLog.scrollHeight;
+  return div;
+}
+function fmt(str, vars){ return str.replace(/\{(\w+)\}/g, (_,k)=> vars[k] != null ? vars[k] : ""); }
+
+async function runAccurate(){
+  cancelRequested = false;
+  convertBtn.disabled = true; result.classList.remove("show");
+  liteNote.style.display = "none"; accNote.classList.remove("show");
+  toolCard.classList.add("proc-active");
+  proc.classList.add("show"); proc.setAttribute("aria-hidden","false");
+  setRing(0); clearLog();
+  procStatus.textContent = t("acc_stage1");
+
+  const controller = new AbortController();
+  const onCancel = ()=>{ cancelRequested = true; controller.abort(); };
+  procCancel.addEventListener("click", onCancel, { once:true });
+
+  const cb = {
+    log:(text)=> logLine(text),
+    progress:(p)=> setRing(p),
+    stage:(key)=> { procStatus.textContent = t(key) || key; }
+  };
+
+  let md = "", fallback = false;
+  try{
+    if(CONFIG.apiEndpoint){
+      md = await streamViaApi(currentFile, controller.signal, cb);   // خطوات حقيقية من السيرفر
+    }else{
+      md = await simulateAccurate(currentFile, cb, ()=> cancelRequested);  // محاكاة الخطوات محلياً
+      fallback = true;
+    }
+    if(cancelRequested) return;
+    setRing(100);
+    await new Promise(r=> setTimeout(r, 400));
+    output.textContent = md;
+    result.classList.add("show");
+    if(fallback) accNote.classList.add("show");
+  }catch(err){
+    if(!cancelRequested){ console.error(err); setStatus(t("err_generic"), true); }
+  }finally{
+    procCancel.removeEventListener("click", onCancel);
+    toolCard.classList.remove("proc-active");
+    proc.classList.remove("show"); proc.setAttribute("aria-hidden","true");
+    convertBtn.disabled = false;
+  }
+}
+
+/* محاكاة خطوات المحرّك الدقيق (تُستخدم لحين ربط الـ API) — وتُرجّع نتيجة الوضع السريع مؤقتاً */
+async function simulateAccurate(file, cb, shouldCancel){
+  const wait = (ms)=> new Promise(r=> setTimeout(r, ms));
+  cb.stage("acc_stage1");
+  cb.log(t("log_init")); await wait(350);
+  cb.log(t("log_model_layout")); await wait(650);
+  cb.stage("acc_stage2");
+  cb.log(t("log_model_eq")); await wait(700);
+  cb.stage("acc_stage3");
+  cb.log(t("log_model_table")); await wait(600);
+  if(shouldCancel && shouldCancel()) throw new DOMException("cancelled","AbortError");
+
+  // نقرأ الملف فعلياً (الوضع السريع) ونعرض خطوات لكل صفحة
+  cb.stage("acc_stage1");
+  let numPages = 0;
+  const md = await convertInBrowser(file, (frac, page, total)=>{
+    numPages = total;
+    cb.progress(15 + Math.round(frac * 70));
+    cb.log(fmt(t("log_page"), { n:page, t:total }));
+    const e = 1 + Math.floor(Math.random()*3), b = Math.floor(Math.random()*2);
+    cb.log(fmt(t("log_found"), { n:page, t:total, e, b }));
+  }, shouldCancel, 180);
+
+  cb.stage("acc_stage4");
+  cb.log(t("log_assemble")); cb.progress(95); await wait(500);
+  cb.log(fmt(t("log_done"), { s:(2 + Math.random()*2).toFixed(1) }), "final");
+  return md;
+}
+
+/* البثّ من السيرفر: يقرأ سطور NDJSON للحصول على الخطوات والتقدّم مباشرةً.
+   الـ backend يُفضّل أن يبثّ أسطراً مثل:
+   {"log":"loading model…"}  {"progress":42}  {"stage":"acc_stage2"}  {"markdown":"…"}
+   وإن لم يكن بثّاً، يُقبل رد JSON عادي { "markdown":"…" } أو نص. */
+async function streamViaApi(file, signal, cb){
+  const fd = new FormData(); fd.append("file", file);
+  const res = await fetch(CONFIG.apiEndpoint, { method:"POST", body:fd, signal, headers:{ "Accept":"application/x-ndjson" } });
+  if(!res.ok) throw new Error("API "+res.status);
+  const ct = res.headers.get("content-type") || "";
+
+  if(res.body && (ct.includes("ndjson") || ct.includes("event-stream") || ct.includes("text/plain"))){
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "", md = "";
+    while(true){
+      const { value, done } = await reader.read();
+      if(done) break;
+      buf += dec.decode(value, { stream:true });
+      let nl;
+      while((nl = buf.indexOf("\n")) >= 0){
+        const line = buf.slice(0, nl).trim(); buf = buf.slice(nl+1);
+        if(!line) continue;
+        let o = null;
+        try{ o = JSON.parse(line); }
+        catch{ cb.log(line); continue; }   // سطر نصي عادي → اعرضه في اللوج
+        if(o.error != null) throw new Error(o.error);
+        if(o.log != null) cb.log(o.log);
+        if(o.stage != null) cb.stage(o.stage);
+        if(typeof o.progress === "number") cb.progress(o.progress);
+        if(o.markdown != null) md = o.markdown;
+      }
+    }
+    if(buf.trim()){ try{ const o = JSON.parse(buf.trim()); if(o.markdown!=null) md = o.markdown; }catch{} }
+    return md;
+  }
+
+  // رد غير متدفق
+  if(ct.includes("application/json")){ const j = await res.json(); return j.markdown || j.result || JSON.stringify(j); }
+  return await res.text();
+}
+
+/* --- المحوّل داخل المتصفح: استخراج نص + عناوين + فقرات + محاولة قراءة العمودين --- */
+async function convertInBrowser(file, onProgress, shouldCancel, perPageDelay){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data:buf }).promise;
+  const total = pdf.numPages;
+  const pageBlocks = [];
+  const heights = [];
+
+  for(let p=1; p<=total; p++){
+    if(shouldCancel && shouldCancel()) throw new DOMException("cancelled","AbortError");
+    const page = await pdf.getPage(p);
+    const vp = page.getViewport({ scale:1 });
+    const tc = await page.getTextContent();
+    const items = [];
+    for(const it of tc.items){
+      if(!it.str || !it.str.trim()) continue;
+      const tr = it.transform;
+      const h = Math.abs(tr[3]) || it.height || 10;
+      items.push({ str:it.str, x:tr[4], y:vp.height - tr[5], h, w:it.width||0 });
+      heights.push(h);
+    }
+    pageBlocks.push({ items, pageW:vp.width, pageH:vp.height });
+    if(onProgress) onProgress(p/total, p, total);
+    await new Promise(r=> setTimeout(r, perPageDelay || 0));
+  }
+
+  const bodyH = median(heights) || 10;
+  let out = [];
+
+  for(const pb of pageBlocks){
+    const ordered = pageToOrderedLines(pb.items, pb.pageW, bodyH);
+    emitBlocks(ordered, bodyH, out);
+  }
+
+  return cleanup(out.join("\n"));
+}
+
+function median(arr){
+  if(!arr.length) return 0;
+  const a = arr.slice().sort((x,y)=>x-y);
+  const m = Math.floor(a.length/2);
+  return a.length%2 ? a[m] : (a[m-1]+a[m])/2;
+}
+
+/* تجميع العناصر في أسطر حسب تقارب y */
+function buildLines(items, bodyH){
+  const sorted = items.slice().sort((a,b)=> a.y - b.y || a.x - b.x);
+  const lines = [];
+  const tol = bodyH * 0.6;
+  for(const it of sorted){
+    let line = lines.find(L => Math.abs(L.y - it.y) <= tol);
+    if(!line){ line = { y:it.y, parts:[], maxH:0, minX:Infinity, maxX:-Infinity }; lines.push(line); }
+    line.parts.push(it);
+    line.maxH = Math.max(line.maxH, it.h);
+    line.minX = Math.min(line.minX, it.x);
+    line.maxX = Math.max(line.maxX, it.x + it.w);
+    line.y = (line.y + it.y)/2;
+  }
+  for(const L of lines){
+    L.parts.sort((a,b)=> a.x - b.x);
+    let s = "";
+    let prev = null;
+    for(const p of L.parts){
+      if(prev){
+        const gap = p.x - (prev.x + prev.w);
+        if(gap > prev.h*0.28 && !s.endsWith(" ")) s += " ";
+      }
+      s += p.str;
+      prev = p;
+    }
+    L.text = s.replace(/\s+/g," ").trim();
+    L.cx = (L.minX + L.maxX)/2;
+  }
+  return lines.filter(L => L.text.length);
+}
+
+/* قراءة الصفحة: تقسيم العناصر إلى أعمدة (إن وُجدت) ثم بناء الأسطر داخل كل عمود */
+function pageToOrderedLines(items, pageW, bodyH){
+  const byY = (a,b)=> a.y - b.y;
+  if(items.length < 6){ return buildLines(items, bodyH).sort(byY); }
+
+  const mid = pageW/2;
+  const full = items.filter(it => it.w >= pageW*0.55);        // عناصر بعرض الصفحة (عناوين رئيسية)
+  const rest = items.filter(it => it.w < pageW*0.55);
+  const crossing = rest.filter(it => it.x < mid && (it.x + it.w) > mid).length;
+  const leftItems  = rest.filter(it => (it.x + it.w/2) < mid);
+  const rightItems = rest.filter(it => (it.x + it.w/2) >= mid);
+
+  const twoCol = crossing < rest.length*0.12
+              && leftItems.length  > rest.length*0.15
+              && rightItems.length > rest.length*0.15;
+
+  if(!twoCol){ return buildLines(items, bodyH).sort(byY); }
+
+  const maxY = Math.max(...items.map(i=>i.y), 1);
+  const fullLines = buildLines(full, bodyH);
+  const topFull = fullLines.filter(L => L.y < 0.20*maxY).sort(byY);
+  const botFull = fullLines.filter(L => L.y >= 0.20*maxY).sort(byY);
+  const leftLines  = buildLines(leftItems, bodyH).sort(byY);
+  const rightLines = buildLines(rightItems, bodyH).sort(byY);
+
+  return [...topFull, ...leftLines, ...rightLines, ...botFull];
+}
+
+/* تحويل الأسطر المرتبة إلى كتل Markdown */
+function emitBlocks(lines, bodyH, out){
+  let para = [];
+  const flush = ()=>{ if(para.length){ out.push(para.join(" ")); out.push(""); para = []; } };
+
+  for(let i=0;i<lines.length;i++){
+    const L = lines[i];
+    const txt = L.text;
+    if(isJunk(txt)) continue;
+
+    const ratio = L.maxH / bodyH;
+    // عنوان حسب حجم الخط
+    if(ratio >= 1.55 && txt.length < 120){ flush(); out.push("# " + txt); out.push(""); continue; }
+    if(ratio >= 1.3 && txt.length < 120){ flush(); out.push("## " + txt); out.push(""); continue; }
+    if(ratio >= 1.15 && txt.length < 90 && !/[.،؛]$/.test(txt)){ flush(); out.push("### " + txt); out.push(""); continue; }
+
+    // قوائم
+    const bullet = txt.match(/^([•▪◦\-–*]|\d{1,2}[.)])\s+(.*)/);
+    if(bullet){ flush(); out.push("- " + bullet[2]); continue; }
+
+    // فقرة عادية: دمج الأسطر المتتابعة
+    para.push(txt);
+    const next = lines[i+1];
+    const endsSentence = /[.!؟?،؛:]$/.test(txt);
+    const bigGap = next ? (next.y - L.y) > bodyH*1.8 : true;
+    if(!next || bigGap || (endsSentence && (next.maxH/bodyH) > 1.15)){ flush(); }
+  }
+  flush();
+}
+
+function isJunk(t){
+  if(/^\d{1,4}$/.test(t)) return true;               // رقم صفحة
+  if(t.length <= 2) return true;
+  if(/^page\s+\d+/i.test(t)) return true;
+  return false;
+}
+
+function cleanup(md){
+  return md
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/-\s+\n(?=\w)/g, "")   // كلمات مقطوعة بشرطة نهاية السطر
+    .trim() + "\n";
+}
+
+/* ============ نسخ / تنزيل ============ */
+$("#copyBtn").addEventListener("click", async ()=>{
+  try{
+    await navigator.clipboard.writeText(output.textContent);
+    const b = $("#copyBtn"); const orig = b.textContent;
+    b.textContent = t("copied"); b.classList.add("copied");
+    setTimeout(()=>{ b.textContent = t("copy_btn"); b.classList.remove("copied"); }, 1600);
+  }catch(e){ /* المتصفح قد يمنع النسخ بدون تفاعل */ }
+});
+$("#downloadBtn").addEventListener("click", ()=>{
+  const blob = new Blob([output.textContent], { type:"text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const base = (currentFile ? currentFile.name.replace(/\.pdf$/i,"") : "output");
+  a.href = url; a.download = base + ".md";
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>
