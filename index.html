@@ -718,17 +718,14 @@ const RING_C = 326.726;
 
 if(!CONFIG.showAdSlot) adSlot.classList.add("hidden");
 
-function setMode(m) {
-  // لو المستخدم اختار الوضع الدقيق
-  if (m === "accurate") {
-    const currentHost = window.location.hostname;
-    
-    // لو الموقع شغال على جيتهاب
-    if (currentHost === "mohamedezaldine.github.io") {
-      alert("عذراً، ميزة 'التحويل الدقيق' تتطلب موارد سيرفر عالية.\n\nهذه الميزة متاحة للعمل المحلي فقط. كمطور، يمكنك استخدامها عن طريق تشغيل الكود المصدري الموجود في المستودع على جهازك الشخصي.");
-      return; // بنوقف الدالة هنا عشان الزرار ميتفعلش
-    }
-  }
+function setMode(m){
+  mode = m;
+  const acc = m === "accurate";
+  modeAccurate.classList.toggle("active", acc);
+  modeFast.classList.toggle("active", !acc);
+  modeAccurate.setAttribute("aria-selected", acc);
+  modeFast.setAttribute("aria-selected", !acc);
+}
 
   // لو الوضع سريع، أو الوضع دقيق بس شغال محلي (Localhost)
   mode = m;
