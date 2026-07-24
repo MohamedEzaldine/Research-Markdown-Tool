@@ -769,10 +769,14 @@ convertBtn.addEventListener("click", ()=>{
   
   if(mode === "accurate") {
       const currentHost = window.location.hostname;
-      // التحقق وقت التحويل نفسه
+      // لو إحنا على موقع جيتهاب
       if (currentHost.includes("github.io")) {
-          // استدعاء الرسالة حسب اللغة الحالية للموقع
-          alert(t("alert_local_only"));
+          alert(t("alert_local_only")); // الرسالة هتطلع باللغة اللي هو مختارها
+          // السر هنا: بنفضي الرابط عشان المتصفح ميضربش إيرور ويشغل المحاكي (الأنيميشن)
+          CONFIG.apiEndpoint = ""; 
+      } else {
+          // لو إنت شغال على جهازك كمطور
+          CONFIG.apiEndpoint = "http://localhost:8000/convert";
       }
       runAccurate();
   }
