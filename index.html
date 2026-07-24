@@ -727,14 +727,8 @@ function setMode(m){
   modeFast.setAttribute("aria-selected", !acc);
 }
 
-  // لو الوضع سريع، أو الوضع دقيق بس شغال محلي (Localhost)
-  mode = m;
-  const acc = m === "accurate";
-  modeAccurate.classList.toggle("active", acc);
-  modeFast.classList.toggle("active", !acc);
-  modeAccurate.setAttribute("aria-selected", acc);
-  modeFast.setAttribute("aria-selected", !acc);
-};
+modeFast.addEventListener("click", ()=> setMode("fast"));
+modeAccurate.addEventListener("click", ()=> setMode("accurate"));
 
 function fmtSize(b){ return b < 1048576 ? (b/1024).toFixed(0)+" KB" : (b/1048576).toFixed(1)+" MB"; }
 function t(k){ return I18N[lang][k]; }
