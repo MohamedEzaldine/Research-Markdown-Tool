@@ -628,6 +628,7 @@ const I18N = {
     st_done:"تم التحويل بنجاح", st_sending:"يرسل إلى المحرك…",
     err_pdf:"الرجاء اختيار ملف PDF صالح.", err_size:"حجم الملف يتجاوز 30 ميجابايت.",
     err_generic:"تعذّر تحويل هذا الملف. جرّب ملفاً آخر.",
+    alert_local_only:"عذراً، ميزة 'التحويل الدقيق' تتطلب موارد سيرفر عالية.\n\nهذه الميزة متاحة للعمل المحلي فقط. كمطور، يمكنك استخدامها عن طريق تشغيل الكود المصدري الموجود في المستودع على جهازك الشخصي.",
     copied:"تم النسخ"
   },
   en: {
@@ -676,6 +677,7 @@ const I18N = {
     st_done:"Converted successfully", st_sending:"Sending to engine…",
     err_pdf:"Please choose a valid PDF file.", err_size:"File exceeds 30 MB.",
     err_generic:"Could not convert this file. Try another file.",
+    alert_local_only:"Sorry, the 'Accurate' conversion requires high server resources.\n\nThis feature is available for local use only. As a developer, you can use it by running the source code from the repository on your local machine.",
     copied:"Copied"
   }
 };
@@ -768,9 +770,9 @@ convertBtn.addEventListener("click", ()=>{
   if(mode === "accurate") {
       const currentHost = window.location.hostname;
       // التحقق وقت التحويل نفسه
-      if (currentHost === "mohamedezaldine.github.io") {
-          alert("عذراً، ميزة 'التحويل الدقيق' تتطلب موارد سيرفر عالية.\n\nهذه الميزة متاحة للعمل المحلي فقط. كمطور، يمكنك استخدامها عن طريق تشغيل الكود المصدري الموجود في المستودع على جهازك الشخصي.");
-          return; // إيقاف التحويل
+      if (currentHost.includes("github.io")) {
+          // استدعاء الرسالة حسب اللغة الحالية للموقع
+          alert(t("alert_local_only"));
       }
       runAccurate();
   }
