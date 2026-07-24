@@ -770,8 +770,19 @@ drop.addEventListener("drop", (e)=>{ if(e.dataTransfer.files[0]) pickFile(e.data
 /* ============ التحويل ============ */
 convertBtn.addEventListener("click", ()=>{
   if(!currentFile) return;
-  if(mode === "accurate") runAccurate();
-  else runFast();
+  
+  if(mode === "accurate") {
+      const currentHost = window.location.hostname;
+      // التحقق وقت التحويل نفسه
+      if (currentHost === "mohamedezaldine.github.io") {
+          alert("عذراً، ميزة 'التحويل الدقيق' تتطلب موارد سيرفر عالية.\n\nهذه الميزة متاحة للعمل المحلي فقط. كمطور، يمكنك استخدامها عن طريق تشغيل الكود المصدري الموجود في المستودع على جهازك الشخصي.");
+          return; // إيقاف التحويل
+      }
+      runAccurate();
+  }
+  else {
+      runFast();
+  }
 });
 
 /* ---- الوضع السريع: استخراج داخل المتصفح مع شريط بسيط ---- */
