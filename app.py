@@ -131,6 +131,10 @@ async def convert(request: Request, file: UploadFile = File(...)):
                 q.put({"log": "initializing precise converter"})
 
                 from marker.converters.pdf import PdfConverter
+                from marker.settings import settings # استدعاء الإعدادات
+                
+                # إيقاف استخراج الروابط الداخلية لتنظيف النص
+                settings.EXTRACT_LINKS = False 
 
                 converter = PdfConverter(artifact_dict=MODELS)
                 q.put({"log": "running layout, equation & table models"})
@@ -141,10 +145,18 @@ async def convert(request: Request, file: UploadFile = File(...)):
                     from marker.output import text_from_rendered
                     md, _, _ = text_from_rendered(rendered)
 
+                # --- فلتر التنظيف المضاف ---
+                # 1. إزالة بقايا الصور الزائفة
+                md = re.sub(r'!\[\]\([^)]+\)', '', md)
+                # 2. إزالة أكواد الـ HTML والـ Anchor tags المتبقية
+                md = re.sub(r'<a href="#[^>]+>|<\/a>|<span id="[^>]+><\/span>', '', md)
+                md = re.sub(r'<sup>|<\/sup>', '', md)
+                # -------------------------
+
                 q.put({"progress": 100})
                 q.put({"log": "done"})
-                q.put({"markdown": md})
-            except Exception as e:  # noqa: BLE001
+                q.put({"markdown": md.strip()})
+            except Exception as e:  
                 sys.stdout, sys.stderr = old_out, old_err
                 q.put({"error": str(e)})
             finally:
@@ -155,7 +167,7 @@ async def convert(request: Request, file: UploadFile = File(...)):
                     pass
                 with _inflight_lock:
                     _inflight -= 1
-                q.put(None) 
+                q.put(None)
 
     threading.Thread(target=worker, daemon=True).start()
 
