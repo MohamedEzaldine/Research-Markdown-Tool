@@ -768,16 +768,8 @@ convertBtn.addEventListener("click", ()=>{
   if(!currentFile) return;
   
   if(mode === "accurate") {
-      const currentHost = window.location.hostname;
-      // لو إحنا على موقع جيتهاب
-      if (currentHost.includes("github.io")) {
-          alert(t("alert_local_only")); // الرسالة هتطلع باللغة اللي هو مختارها
-          // السر هنا: بنفضي الرابط عشان المتصفح ميضربش إيرور ويشغل المحاكي (الأنيميشن)
-          CONFIG.apiEndpoint = ""; 
-      } else {
-          // لو إنت شغال على جهازك كمطور
-          CONFIG.apiEndpoint = "http://localhost:8000/convert";
-      }
+      // إجبار الكود على استخدام سيرفر Hugging Face دائماً وإلغاء رسالة الخطأ
+      CONFIG.apiEndpoint = "https://moezaldine-research-markdown-tool.hf.space/convert";
       runAccurate();
   }
   else {
